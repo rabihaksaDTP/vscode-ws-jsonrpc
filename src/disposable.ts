@@ -1,12 +1,9 @@
 /* --------------------------------------------------------------------------------------------
- * Copyright (c) 2018 TypeFox GmbH (http://www.typefox.io). All rights reserved.
+ * Copyright (c) 2018-2022 TypeFox GmbH (http://www.typefox.io). All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
-import { Disposable } from 'vscode-jsonrpc/lib/events';
 
-export {
-    Disposable
-}
+import { Disposable } from 'vscode-jsonrpc';
 
 export class DisposableCollection implements Disposable {
     protected readonly disposables: Disposable[] = [];
@@ -27,7 +24,6 @@ export class DisposableCollection implements Disposable {
                     disposables.splice(index, 1);
                 }
             }
-        }
+        };
     }
-
 }

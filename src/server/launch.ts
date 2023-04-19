@@ -1,23 +1,27 @@
 /* --------------------------------------------------------------------------------------------
- * Copyright (c) 2018 TypeFox GmbH (http://www.typefox.io). All rights reserved.
+ * Copyright (c) 2018-2022 TypeFox GmbH (http://www.typefox.io). All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
 import * as net from 'net';
 import * as stream from 'stream';
 import * as cp from 'child_process';
-import { StreamMessageReader, StreamMessageWriter, SocketMessageReader, SocketMessageWriter } from "vscode-jsonrpc";
-import { IConnection, createConnection } from "./connection";
-import { IWebSocket, WebSocketMessageReader, WebSocketMessageWriter, IWebSocketConnection } from '../socket';
+import { StreamMessageReader, StreamMessageWriter, SocketMessageReader, SocketMessageWriter } from 'vscode-jsonrpc/node.js';
+import { IConnection, createConnection } from './connection.js';
+import { IWebSocket, IWebSocketConnection } from '../socket/socket.js';
+import { WebSocketMessageReader } from '../socket/reader.js';
+import { WebSocketMessageWriter } from '../socket/writer.js';
 
-export function createServerProcess(serverName: string, command: string, args?: string[], options?: cp.SpawnOptions): IConnection {
-    const serverProcess = cp.spawn(command, args, options);
+export function createServerProcess(serverName: string, command: string, args?: string[], options?: cp.SpawnOptions): IConnection | undefined {
+    const serverProcess = cp.spawn(command, args || [], options || {});
     serverProcess.on('error', error =>
         console.error(`Launching ${serverName} Server failed: ${error}`)
     );
-    serverProcess.stderr.on('data', data =>
-        console.error(`${serverName} Server: ${data}`)
-    );
+    if (serverProcess.stderr !== null) {
+        serverProcess.stderr.on('data', data =>
+            console.error(`${serverName} Server: ${data}`)
+        );
+    }
     return createProcessStreamConnection(serverProcess);
 }
 
@@ -37,8 +41,12 @@ export function createSocketConnection(outSocket: net.Socket, inSocket: net.Sock
     return createConnection(reader, writer, onDispose);
 }
 
-export function createProcessStreamConnection(process: cp.ChildProcess): IConnection {
-    return createStreamConnection(process.stdout, process.stdin, () => process.kill());
+export function createProcessStreamConnection(process: cp.ChildProcess): IConnection | undefined {
+    if (process.stdout !== null && process.stdin !== null) {
+        return createStreamConnection(process.stdout, process.stdin, () => process.kill());
+    } else {
+        return undefined;
+    }
 }
 
 export function createStreamConnection(outStream: stream.Readable, inStream: stream.Writable, onDispose: () => void): IConnection {
@@ -46,4 +54,3 @@ export function createStreamConnection(outStream: stream.Readable, inStream: str
     const writer = new StreamMessageWriter(inStream);
     return createConnection(reader, writer, onDispose);
 }
-

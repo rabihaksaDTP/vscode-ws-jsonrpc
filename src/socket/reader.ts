@@ -1,13 +1,13 @@
 /* --------------------------------------------------------------------------------------------
- * Copyright (c) 2018 TypeFox GmbH (http://www.typefox.io). All rights reserved.
+ * Copyright (c) 2018-2022 TypeFox GmbH (http://www.typefox.io). All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import { DataCallback, AbstractMessageReader } from "vscode-jsonrpc/lib/messageReader";
-import { IWebSocket } from "./socket";
+import { Disposable } from 'vscode-jsonrpc';
+import { DataCallback, AbstractMessageReader, MessageReader } from 'vscode-jsonrpc/lib/common/messageReader.js';
+import { IWebSocket } from './socket.js';
 
-export class WebSocketMessageReader extends AbstractMessageReader {
-
+export class WebSocketMessageReader extends AbstractMessageReader implements MessageReader {
     protected state: 'initial' | 'listening' | 'closed' = 'initial';
     protected callback: DataCallback | undefined;
     protected readonly events: { message?: any, error?: any }[] = [];
@@ -32,7 +32,7 @@ export class WebSocketMessageReader extends AbstractMessageReader {
         });
     }
 
-    listen(callback: DataCallback): void {
+    listen(callback: DataCallback): Disposable {
         if (this.state === 'initial') {
             this.state = 'listening';
             this.callback = callback;
@@ -47,18 +47,33 @@ export class WebSocketMessageReader extends AbstractMessageReader {
                 }
             }
         }
+        return {
+            dispose: () => {
+                if (this.callback === callback) {
+                    this.callback = undefined;
+                }
+            }
+        };
     }
 
     protected readMessage(message: any): void {
         if (this.state === 'initial') {
             this.events.splice(0, 0, { message });
         } else if (this.state === 'listening') {
-            const data = JSON.parse(message);
-            this.callback!(data);
+            try {
+                const data = JSON.parse(message);
+                this.callback!(data);
+            } catch (err) {
+                const error: Error = {
+                    name: '' + 400,
+                    message: `Error during message parsing, reason = ${typeof err === 'object' ? (err as any).message : 'unknown'}`
+                };
+                this.fireError(error);
+            }
         }
     }
 
-    protected fireError(error: any): void {
+    protected override fireError(error: any): void {
         if (this.state === 'initial') {
             this.events.splice(0, 0, { error });
         } else if (this.state === 'listening') {
@@ -66,7 +81,7 @@ export class WebSocketMessageReader extends AbstractMessageReader {
         }
     }
 
-    protected fireClose(): void {
+    protected override fireClose(): void {
         if (this.state === 'initial') {
             this.events.splice(0, 0, {});
         } else if (this.state === 'listening') {
@@ -74,5 +89,4 @@ export class WebSocketMessageReader extends AbstractMessageReader {
         }
         this.state = 'closed';
     }
-
 }
