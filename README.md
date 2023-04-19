@@ -1,8 +1,4 @@
-# ⚠️ vscode-ws-jsonrpc is deprecated.
 
-## Use [vscode-ws-jsonrpc](https://github.com/TypeFox/monaco-languageclient/tree/main/packages/vscode-ws-jsonrpc) instead
-
------
 
 ## VSCode WebSocket JSON RPC
 
